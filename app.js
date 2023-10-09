@@ -93,7 +93,14 @@ todoList.addEventListener('click', (event) => {
             }
         })
             .then((res) => res.json())
-            .then((data) => console.log('PATCH: ', data))
+            .then((data) => {
+                const elements = todoList.children
+                for (let i of elements) {
+                    if (data.id === +i.id) {
+                        i.firstChild.checked = data.completed
+                    }
+                }
+            })
     }
 })
 //DELETE
