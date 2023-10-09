@@ -28,7 +28,6 @@ try {
                 createTodo(todos[i].id, todos[i].completed, users[i].name, todos[i].title)
             }
         }
-
     })
 }
 catch (error) {
@@ -94,6 +93,7 @@ todoList.addEventListener('click', (event) => {
         })
             .then((res) => res.json())
             .then((data) => {
+                console.log('PATCH: ', data);
                 const elements = todoList.children
                 for (let i of elements) {
                     if (data.id === +i.id) {
