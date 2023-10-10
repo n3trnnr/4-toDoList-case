@@ -3,20 +3,23 @@ const input = document.getElementById('new-todo')
 const todoList = document.getElementById('todo-list')
 const btn = document.querySelector('button')
 
+const usersArr = []
+
 const getData = async () => {
     const [usersResponse, todosResponse] = await Promise.all([
         fetch('https://jsonplaceholder.typicode.com/users'),
         fetch('https://jsonplaceholder.typicode.com/todos')
-        // fetch('https://jsonplaceholder.typicode.com/todos?_starts=0&_limit=10')
     ])
 
     const users = await usersResponse.json()
     const todos = await todosResponse.json()
     return [users, todos]
 }
-
 try {
     getData().then(([users, todos]) => {
+
+        usersArr.push(...users)
+
         users.forEach((user) => {
             const option = document.createElement('option')
             option.innerText = user.name
@@ -30,18 +33,11 @@ try {
                 }
             }
         }
-
-        // for (let i = 0; i < todos.length; i++) {
-        //     if (todos[i].id === users[i].id) {
-        //         createTodo(todos[i].id, todos[i].completed, users[i].name, todos[i].title)
-        //     }
-        // }
     })
 }
 catch (error) {
     console.log(error);
 }
-
 function createTodo(id, isChecked, userName, title) {
     const li = document.createElement('li')
     li.classList.add('todo-item')
@@ -69,12 +65,13 @@ btn.addEventListener('click', (event) => {
         input.value = ''
     } else {
         createTodo(todoList.childElementCount + 1, false, select.value, input.value)
-        input.value = ''
 
+        const userId = usersArr.filter(user => user.name === select.value)
+        // console.log(todoList.childElementCount + 1, false, select.value, input.value);
         fetch('https://jsonplaceholder.typicode.com/todos', {
             method: 'POST',
             body: JSON.stringify({
-                userId: todoList.firstChild,
+                userId: userId.id,
                 id: todoList.childElementCount + 1,
                 title: input.value,
                 completed: false
@@ -85,6 +82,7 @@ btn.addEventListener('click', (event) => {
         })
             .then((res) => res.json())
             .then((data) => console.log('POST: ', data))
+        input.value = ''
     }
 })
 //PATCH
