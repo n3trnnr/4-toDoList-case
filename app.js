@@ -2,42 +2,10 @@ const select = document.getElementById('user-todo')
 const input = document.getElementById('new-todo')
 const todoList = document.getElementById('todo-list')
 const btn = document.querySelector('button')
+const paginationWrapper = document.querySelector('#btn-wrapper')
 
 const usersArr = []
 
-const getData = async () => {
-    const [usersResponse, todosResponse] = await Promise.all([
-        fetch('https://jsonplaceholder.typicode.com/users'),
-        fetch('https://jsonplaceholder.typicode.com/todos')
-    ])
-
-    const users = await usersResponse.json()
-    const todos = await todosResponse.json()
-    return [users, todos]
-}
-try {
-    getData().then(([users, todos]) => {
-
-        usersArr.push(...users)
-
-        users.forEach((user) => {
-            const option = document.createElement('option')
-            option.innerText = user.name
-            select.appendChild(option)
-        })
-
-        for (let i = 0; i < users.length; i++) {
-            for (let j = 0; j < todos.length; j++) {
-                if (users[i].id === todos[j].userId) {
-                    createTodo(todos[j].id, todos[j].completed, users[i].name, todos[j].title)
-                }
-            }
-        }
-    })
-}
-catch (error) {
-    console.log(error);
-}
 function createTodo(id, isChecked, userName, title) {
     const li = document.createElement('li')
     li.classList.add('todo-item')
@@ -57,48 +25,96 @@ function createTodo(id, isChecked, userName, title) {
 
     todoList.prepend(li)
 }
-//POST
-btn.addEventListener('click', (event) => {
+
+const getData = async () => {
+    try {
+        const [usersResponse, todosResponse] = await Promise.all([
+            fetch('https://jsonplaceholder.typicode.com/users'),
+            fetch('https://jsonplaceholder.typicode.com/todos')
+        ])
+        if (!usersResponse.ok) {
+            throw new Error(`${usersResponse.status}`)
+        } else if (!todosResponse.ok) {
+            throw new Error(`${todosResponse.status}`)
+        } else {
+            const users = await usersResponse.json()
+            const todos = await todosResponse.json()
+            // pagination(todos, users)
+
+            usersArr.push(...users)
+
+            users.forEach((user) => {
+                const option = document.createElement('option')
+                option.innerText = user.name
+                select.appendChild(option)
+            })
+
+            users.forEach((user) => {
+                todos.forEach((todo) => {
+                    if (user.id === todo.userId) {
+                        createTodo(todo.id, todo.completed, user.name, todo.title)
+                    }
+                })
+            })
+        }
+    }
+    catch (error) {
+        alert(error)
+    }
+}
+
+async function postData(event) {
     event.preventDefault()
     if (!input.value || select.value === 'select user') {
         alert('Заполните все необходимые поля!')
         input.value = ''
     } else {
-        createTodo(todoList.childElementCount + 1, false, select.value, input.value)
-
-        const userId = usersArr.filter(user => user.name === select.value)
-        // console.log(todoList.childElementCount + 1, false, select.value, input.value);
-        fetch('https://jsonplaceholder.typicode.com/todos', {
-            method: 'POST',
-            body: JSON.stringify({
-                userId: userId.id,
-                id: todoList.childElementCount + 1,
-                title: input.value,
-                completed: false
-            }),
-            headers: {
-                'Content-Type': 'application/json'
+        const user = usersArr.find(user => user.name === select.value)
+        try {
+            const res = await fetch('https://jsonplaceholder.typicode.com/todos', {
+                method: 'POST',
+                body: JSON.stringify({
+                    userId: user.id,
+                    id: todoList.childElementCount + 1,
+                    title: input.value,
+                    completed: false
+                }),
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            if (!res.ok) {
+                throw new Error(`${res.status}`)
+            } else {
+                const data = await res.json()
+                if (Object.keys(data).length) {
+                    console.log('POST', data);
+                    createTodo(data.id, data.completed, select.value, data.title)
+                }
             }
-        })
-            .then((res) => res.json())
-            .then((data) => console.log('POST: ', data))
+        } catch (error) {
+            alert(error)
+        }
         input.value = ''
     }
-})
-//PATCH
-todoList.addEventListener('click', (event) => {
+}
+
+async function patchData(event) {
     if (event.target.tagName === 'INPUT') {
-        fetch(`https://jsonplaceholder.typicode.com/todos/${+event.target.parentNode.id}`, {
-            method: 'PATCH',
-            body: JSON.stringify({
-                completed: event.target.checked
-            }),
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        })
-            .then((res) => res.json())
-            .then((data) => {
+        try {
+            const res = await fetch(`https://jsonplaceholder.typicode.com/todos/${+event.target.parentElement.id}`, {
+                method: 'PATCH',
+                body: JSON.stringify({
+                    completed: event.target.checked
+                }),
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            if (!res.ok) {
+                throw new Error(`${res.status}`)
+            } else {
+                const data = await res.json()
                 console.log('PATCH: ', data);
                 const elements = todoList.children
                 for (let i of elements) {
@@ -106,17 +122,58 @@ todoList.addEventListener('click', (event) => {
                         i.firstChild.checked = data.completed
                     }
                 }
-            })
+            }
+        } catch (error) {
+            alert(error)
+        }
     }
-})
-//DELETE
-todoList.addEventListener('click', (event) => {
+}
+
+async function deleteData(event) {
     if (event.target.classList.contains('close')) {
-        fetch(`https://jsonplaceholder.typicode.com/todos/${+event.target.parentNode.id}`, {
-            method: 'DELETE'
-        })
-            .then((res) => res.json())
-            .then((data) => console.log('DELETE: ', data))
-        event.target.parentNode.remove()
+        try {
+            const res = await fetch(`https://jsonplaceholder.typicode.com/todos/${+event.target.parentElement.id}`, {
+                method: 'DELETE'
+            })
+            if (!res.ok) {
+                throw new Error(`${res.status}`)
+            } else {
+                event.target.parentElement.remove()
+                const data = await res.json()
+                console.log('DELETE: ', data)
+            }
+        } catch (error) {
+            alert(error)
+        }
     }
-})
+}
+
+// function pagination(todos, users, page) {
+//     const todosArr = [...todos]
+//     const usersArr = [...users]
+
+//     let pages = [...Array(Math.ceil(todosArr.length / 30)).keys()]
+//     pages.forEach((index) => {
+//         const btn = document.createElement('button')
+//         btn.innerText = index + 1
+//         paginationWrapper.append(btn)
+//     })
+
+//     let currentPage = 1
+//     let start = (currentPage - 1) * 30
+//     let end = currentPage * 30
+
+//     const paginator = todosArr.slice(start, end)
+//     usersArr.forEach((user) => {
+//         paginator.forEach((todo) => {
+//             if (user.id === todo.userId) {
+//                 createTodo(todo.id, todo.completed, user.name, todo.title)
+//             }
+//         })
+//     })
+// }
+
+btn.addEventListener('click', postData)
+todoList.addEventListener('click', patchData)
+todoList.addEventListener('click', deleteData)
+getData()
