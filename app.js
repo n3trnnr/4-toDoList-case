@@ -6,6 +6,12 @@ const buttonsWrapper = document.querySelector('#buttons-wrapper')
 
 let usersArr = []
 let todosArr = []
+let currentPage = 1
+
+function findUser(id) {
+    const user = usersArr.find((user) => user.id === id)
+    return user.name
+}
 
 function createTodo(id, isChecked, userName, title) {
     const li = document.createElement('li')
@@ -24,7 +30,7 @@ function createTodo(id, isChecked, userName, title) {
     li.prepend(checkbox)
     li.appendChild(delBtn)
 
-    todoList.appendChild(li)
+    todoList.append(li)
 }
 
 const getData = async () => {
@@ -71,7 +77,7 @@ async function postData(event) {
                 method: 'POST',
                 body: JSON.stringify({
                     userId: user.id,
-                    id: todoList.childElementCount + 1,
+                    id: todosArr.length + 1,
                     title: input.value,
                     completed: false
                 }),
@@ -84,11 +90,8 @@ async function postData(event) {
                 throw new Error(`${res.status}`)
             } else {
                 const data = await res.json()
-                if (Object.keys(data).length) {
-                    console.log('POST', data);
-                    todosArr = [data, ...todosArr]
-                    pagination()
-                }
+                todosArr.unshift({ ...data, id: todosArr.length + 1 })
+                pagination(currentPage)
             }
         } catch (error) {
             alert(error)
@@ -138,14 +141,16 @@ async function deleteData(event) {
             if (!res.ok) {
                 throw new Error(`${res.status}`)
             } else {
-                todosArr.forEach((el, i) => {
-                    if (el.id === +event.target.parentElement.id) {
-                        event.target.parentElement.remove()
-                        todosArr.splice(i, 1)
-                    }
-                })
                 const data = await res.json()
                 console.log('DELETE: ', data)
+
+                todosArr.forEach((val, indx) => {
+                    if (val.id === +event.target.parentElement.id) {
+                        todosArr.splice(indx, 1)
+                        event.target.parentElement.remove()
+                        pagination(currentPage)
+                    }
+                })
             }
         } catch (error) {
             alert(error)
@@ -154,7 +159,6 @@ async function deleteData(event) {
 }
 
 function pagination(id) {
-    let currentPage = 1
     if (id) {
         currentPage = id
     }
@@ -174,17 +178,13 @@ function pagination(id) {
         }
 
         btn.classList.add('pagBtn')
-        btn.addEventListener('click', (event) => { pagination(+event.target.innerText) })
+        btn.addEventListener('click', (event) => pagination(+event.target.innerText))
         buttonsWrapper.append(btn)
     })
 
     todoList.replaceChildren()
-    usersArr.forEach((user) => {
-        todosArr.slice(start, end).forEach((todo) => {
-            if (user.id === todo.userId) {
-                createTodo(todo.id, todo.completed, user.name, todo.title)
-            }
-        })
+    todosArr.slice(start, end).forEach((todo) => {
+        createTodo(todo.id, todo.completed, findUser(todo.userId), todo.title)
     })
 }
 
