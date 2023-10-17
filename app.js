@@ -2,8 +2,10 @@ const select = document.getElementById('user-todo')
 const input = document.getElementById('new-todo')
 const todoList = document.getElementById('todo-list')
 const btn = document.querySelector('button')
+const buttonsWrapper = document.querySelector('#buttons-wrapper')
 
-const usersArr = []
+let usersArr = []
+let todosArr = []
 
 function createTodo(id, isChecked, userName, title) {
     const li = document.createElement('li')
@@ -22,7 +24,7 @@ function createTodo(id, isChecked, userName, title) {
     li.prepend(checkbox)
     li.appendChild(delBtn)
 
-    todoList.prepend(li)
+    todoList.appendChild(li)
 }
 
 const getData = async () => {
@@ -39,7 +41,8 @@ const getData = async () => {
             const users = await usersResponse.json()
             const todos = await todosResponse.json()
 
-            usersArr.push(...users)
+            usersArr = users
+            todosArr = todos
 
             users.forEach((user) => {
                 const option = document.createElement('option')
@@ -47,13 +50,7 @@ const getData = async () => {
                 select.appendChild(option)
             })
 
-            users.forEach((user) => {
-                todos.forEach((todo) => {
-                    if (user.id === todo.userId) {
-                        createTodo(todo.id, todo.completed, user.name, todo.title)
-                    }
-                })
-            })
+            pagination()
         }
     }
     catch (error) {
@@ -63,6 +60,7 @@ const getData = async () => {
 
 async function postData(event) {
     event.preventDefault()
+
     if (!input.value || select.value === 'select user') {
         alert('Заполните все необходимые поля!')
         input.value = ''
@@ -81,13 +79,15 @@ async function postData(event) {
                     'Content-Type': 'application/json'
                 }
             })
+
             if (!res.ok) {
                 throw new Error(`${res.status}`)
             } else {
                 const data = await res.json()
                 if (Object.keys(data).length) {
                     console.log('POST', data);
-                    createTodo(data.id, data.completed, select.value, data.title)
+                    todosArr = [data, ...todosArr]
+                    pagination()
                 }
             }
         } catch (error) {
@@ -109,18 +109,19 @@ async function patchData(event) {
                     'Content-Type': 'application/json'
                 }
             })
+
             if (!res.ok) {
                 event.target.checked === true ? event.target.checked = false : event.target.checked = true
                 throw new Error(`${res.status}`)
             } else {
                 const data = await res.json()
                 console.log('PATCH: ', data);
-                const elements = todoList.children
-                for (let i of elements) {
-                    if (data.id === +i.id) {
-                        i.firstChild.checked = data.completed
+
+                todosArr.forEach((i) => {
+                    if (data.id === i.id) {
+                        i.completed = data.completed
                     }
-                }
+                })
             }
         } catch (error) {
             alert(error)
@@ -137,7 +138,12 @@ async function deleteData(event) {
             if (!res.ok) {
                 throw new Error(`${res.status}`)
             } else {
-                event.target.parentElement.remove()
+                todosArr.forEach((el, i) => {
+                    if (el.id === +event.target.parentElement.id) {
+                        event.target.parentElement.remove()
+                        todosArr.splice(i, 1)
+                    }
+                })
                 const data = await res.json()
                 console.log('DELETE: ', data)
             }
@@ -145,6 +151,41 @@ async function deleteData(event) {
             alert(error)
         }
     }
+}
+
+function pagination(id) {
+    let currentPage = 1
+    if (id) {
+        currentPage = id
+    }
+
+    const perPage = 10
+    let start = perPage * (currentPage - 1)
+    let end = perPage * currentPage
+    let pages = [...Array(Math.ceil(todosArr.length / perPage)).keys()]
+
+    buttonsWrapper.replaceChildren()
+    pages.forEach((i) => {
+        const btn = document.createElement('button')
+        btn.innerText = i + 1
+
+        if (+btn.innerText === currentPage) {
+            btn.classList.toggle('currentBtn')
+        }
+
+        btn.classList.add('pagBtn')
+        btn.addEventListener('click', (event) => { pagination(+event.target.innerText) })
+        buttonsWrapper.append(btn)
+    })
+
+    todoList.replaceChildren()
+    usersArr.forEach((user) => {
+        todosArr.slice(start, end).forEach((todo) => {
+            if (user.id === todo.userId) {
+                createTodo(todo.id, todo.completed, user.name, todo.title)
+            }
+        })
+    })
 }
 
 btn.addEventListener('click', postData)

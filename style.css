@@ -69,8 +69,36 @@ ul {
     color: red;
     cursor: pointer;
     font-weight: bolder;
+    font-size: 1rem;
+    border: none;
+    background: none;
 }
 
 .close:hover {
     color: tomato
+}
+
+#buttons-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 32px;
+}
+
+.pagBtn {
+    width: 30px;
+    height: 30px;
+    margin: 5px;
+    border: none;
+    background: mediumorchid;
+    border-radius: 5px;
+    color: white;
+}
+
+.pagBtn:hover {
+    background: violet;
+}
+
+.currentBtn {
+    background: rgb(150, 0, 150);
 }
