@@ -2,11 +2,9 @@ const select = document.getElementById('user-todo')
 const input = document.getElementById('new-todo')
 const todoList = document.getElementById('todo-list')
 const btn = document.querySelector('button')
-const buttonsWrapper = document.querySelector('#buttons-wrapper')
 
 let usersArr = []
 let todosArr = []
-let currentPage = 1
 
 function findUser(id) {
     const user = usersArr.find((user) => user.id === id)
@@ -30,7 +28,7 @@ function createTodo(id, isChecked, userName, title) {
     li.prepend(checkbox)
     li.appendChild(delBtn)
 
-    todoList.append(li)
+    todoList.prepend(li)
 }
 
 const getData = async () => {
@@ -56,7 +54,9 @@ const getData = async () => {
                 select.appendChild(option)
             })
 
-            pagination()
+            todosArr.forEach((todo) => {
+                createTodo(todo.id, todo.completed, findUser(todo.userId), todo.title)
+            })
         }
     }
     catch (error) {
@@ -90,8 +90,8 @@ async function postData(event) {
                 throw new Error(`${res.status}`)
             } else {
                 const data = await res.json()
-                todosArr.unshift({ ...data, id: todosArr.length + 1 })
-                pagination(currentPage)
+                createTodo(todosArr.length + 1, data.completed, select.value, data.title)
+                todosArr.push({ ...data, id: todosArr.length + 1 })
             }
         } catch (error) {
             alert(error)
@@ -114,11 +114,9 @@ async function patchData(event) {
             })
 
             if (!res.ok) {
-                event.target.checked === true ? event.target.checked = false : event.target.checked = true
                 throw new Error(`${res.status}`)
             } else {
                 const data = await res.json()
-                console.log('PATCH: ', data);
 
                 todosArr.forEach((i) => {
                     if (data.id === i.id) {
@@ -127,6 +125,7 @@ async function patchData(event) {
                 })
             }
         } catch (error) {
+            event.target.checked === true ? event.target.checked = false : event.target.checked = true
             alert(error)
         }
     }
@@ -142,13 +141,11 @@ async function deleteData(event) {
                 throw new Error(`${res.status}`)
             } else {
                 const data = await res.json()
-                console.log('DELETE: ', data)
 
                 todosArr.forEach((val, indx) => {
                     if (val.id === +event.target.parentElement.id) {
                         todosArr.splice(indx, 1)
                         event.target.parentElement.remove()
-                        pagination(currentPage)
                     }
                 })
             }
@@ -158,37 +155,15 @@ async function deleteData(event) {
     }
 }
 
-function pagination(id) {
-    if (id) {
-        currentPage = id
+function isOnline() {
+    if (!navigator.onLine) {
+        alert('Проверьте подключение к интернету!')
+    } else {
+        getData()
     }
-
-    const perPage = 10
-    let start = perPage * (currentPage - 1)
-    let end = perPage * currentPage
-    let pages = [...Array(Math.ceil(todosArr.length / perPage)).keys()]
-
-    buttonsWrapper.replaceChildren()
-    pages.forEach((i) => {
-        const btn = document.createElement('button')
-        btn.innerText = i + 1
-
-        if (+btn.innerText === currentPage) {
-            btn.classList.toggle('currentBtn')
-        }
-
-        btn.classList.add('pagBtn')
-        btn.addEventListener('click', (event) => pagination(+event.target.innerText))
-        buttonsWrapper.append(btn)
-    })
-
-    todoList.replaceChildren()
-    todosArr.slice(start, end).forEach((todo) => {
-        createTodo(todo.id, todo.completed, findUser(todo.userId), todo.title)
-    })
 }
 
+window.addEventListener('load', isOnline)
 btn.addEventListener('click', postData)
 todoList.addEventListener('click', patchData)
 todoList.addEventListener('click', deleteData)
-getData()
